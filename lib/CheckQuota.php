@@ -79,6 +79,8 @@ class CheckQuota {
 	 * Checks the quota of a given user and issues the warning if necessary
 	 *
 	 * @param string $userId
+	 * 
+	 * comment all lines and add $usage = $this->getRelativeQuotaUsage($userId); and $this->sendEmail($userId, $usage);
 	 */
 	public function check(string $userId): void {
 		if (!$this->userManager->userExists($userId)) {
@@ -118,6 +120,8 @@ class CheckQuota {
 			$this->removeWarning($userId);
 			$this->removeLastWarning($userId, 'info');
 		}
+		
+		
 	}
 
 	/**
@@ -173,6 +177,14 @@ class CheckQuota {
 			return;
 		}
 
+		$storage = $this->getStorageInfo($userId);
+		$quota = $this->humanFileSize((int) $storage['quota']);
+		$usedSpace = $this->humanFileSize((int) $storage['used']);
+		if($quota[0]=="?"){
+			$quota[0]="Unlimited";
+			$quota[1]="";
+		}
+
 		$email = $user->getEMailAddress();
 		if (!$email) {
 			return;
@@ -182,7 +194,11 @@ class CheckQuota {
 		$l = $this->l10nFactory->get('quota_warning', $lang);
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
-			'userId' => $user->getUID()
+			'userId' => $user->getUID(),
+			'displayName'=> $user->getDisplayNameOtherUser(),
+			'storage'=>$storage,
+			'quota1'=>$quota,
+			'usedSpace'=>$usedSpace,
 		]);
 
 		$emailTemplate->addHeader();
