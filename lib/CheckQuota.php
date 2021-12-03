@@ -312,4 +312,32 @@ class CheckQuota {
 		\OC_Util::setupFS($userId);
 		return \OC_Helper::getStorageInfo('/');
 	}
+
+	protected function humanFileSize(int $bytes): array {
+		if ($bytes < 0) {
+			return ['?', ''];
+		}
+		if ($bytes < 1024) {
+			return [$bytes, 'B'];
+		}
+		$bytes = round($bytes / 1024, 0);
+		if ($bytes < 1024) {
+			return [$bytes, 'KB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'MB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'GB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'TB'];
+		}
+
+		$bytes = round($bytes / 1024, 1);
+		return [$bytes, 'PB'];
+	}
 }
