@@ -192,6 +192,7 @@ class CheckQuota {
 
 		$lang = $this->config->getUserValue($userId, 'core', 'lang');
 		$l = $this->l10nFactory->get('quota_warning', $lang);
+		$subl = $this->l10nFactory->get('nmc_email_template', $lang);
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
 			'userId' => $user->getUID(),
@@ -227,7 +228,7 @@ class CheckQuota {
 		try {
 			$message = $this->mailer->createMessage();
 			$message->setTo([$email => $user->getUID()]);
-			$message->setSubject($l->t('Nearing your storage quota'));
+			$message->setSubject($subl->t('Nearing your storage quota'));
 			$message->setPlainBody($emailTemplate->renderText());
 			$message->setHtmlBody($emailTemplate->renderHtml());
 			$this->mailer->send($message);
