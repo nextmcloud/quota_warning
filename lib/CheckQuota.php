@@ -29,19 +29,19 @@ use OCP\BackgroundJob\IJobList;
 use OCP\Files\FileInfo;
 use OCP\Files\NotFoundException;
 use OCP\IConfig;
-use OCP\ILogger;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use OCP\Mail\IMailer;
 use OCP\Notification\IManager;
+use Psr\Log\LoggerInterface;
 
 class CheckQuota {
 
 	/** @var IConfig */
 	protected $config;
 
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	protected $logger;
 
 	/** @var IMailer */
@@ -60,7 +60,7 @@ class CheckQuota {
 	protected $notificationManager;
 
 	public function __construct(IConfig $config,
-								ILogger $logger,
+								LoggerInterface $logger,
 								IMailer $mailer,
 								IFactory $l10nFactory,
 								IUserManager $userManager,
@@ -79,6 +79,8 @@ class CheckQuota {
 	 * Checks the quota of a given user and issues the warning if necessary
 	 *
 	 * @param string $userId
+	 * 
+	 * comment all lines and add $usage = $this->getRelativeQuotaUsage($userId); and $this->sendEmail($userId, $usage);
 	 */
 	public function check(string $userId): void {
 		if (!$this->userManager->userExists($userId)) {
@@ -157,7 +159,7 @@ class CheckQuota {
 				->setSubject(Application::APP_ID, ['usage' => $percentage]);
 			$this->notificationManager->notify($notification);
 		} catch (\InvalidArgumentException $e) {
-			$this->logger->logException($e, ['app' => Application::APP_ID]);
+			$this->logger->critical($e->getMessage(), ['app' => Application::APP_ID, 'exception' => $e]);
 		}
 	}
 
@@ -173,6 +175,14 @@ class CheckQuota {
 			return;
 		}
 
+		$storage = $this->getStorageInfo($userId);
+		$quota = $this->humanFileSize((int) $storage['quota']);
+		$usedSpace = $this->humanFileSize((int) $storage['used']);
+		if($quota[0]=="?"){
+			$quota[0]="Unlimited";
+			$quota[1]="";
+		}
+
 		$email = $user->getEMailAddress();
 		if (!$email) {
 			return;
@@ -180,9 +190,14 @@ class CheckQuota {
 
 		$lang = $this->config->getUserValue($userId, 'core', 'lang');
 		$l = $this->l10nFactory->get('quota_warning', $lang);
+		$subl = $this->l10nFactory->get('nmc_email_template', $lang);
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
-			'userId' => $user->getUID()
+			'userId' => $user->getUID(),
+			'displayName'=> $user->getDisplayNameOtherUser(),
+			'storage'=>$storage,
+			'quota1'=>$quota,
+			'usedSpace'=>$usedSpace,
 		]);
 
 		$emailTemplate->addHeader();
@@ -211,12 +226,12 @@ class CheckQuota {
 		try {
 			$message = $this->mailer->createMessage();
 			$message->setTo([$email => $user->getUID()]);
-			$message->setSubject($l->t('Nearing your storage quota'));
+			$message->setSubject($subl->t('Nearing your storage quota'));
 			$message->setPlainBody($emailTemplate->renderText());
 			$message->setHtmlBody($emailTemplate->renderHtml());
 			$this->mailer->send($message);
 		} catch (\Exception $e) {
-			$this->logger->logException($e, ['app' => 'quota_warning']);
+			$this->logger->critical($e->getMessage(), ['app' => Application::APP_ID, 'exception' => $e]);
 		}
 	}
 
@@ -234,7 +249,7 @@ class CheckQuota {
 				->setUser($userId);
 			$this->notificationManager->markProcessed($notification);
 		} catch (\InvalidArgumentException $e) {
-			$this->logger->logException($e, ['app' => Application::APP_ID]);
+			$this->logger->critical($e->getMessage(), ['app' => Application::APP_ID, 'exception' => $e]);
 		}
 	}
 
@@ -311,5 +326,33 @@ class CheckQuota {
 		\OC_Util::tearDownFS();
 		\OC_Util::setupFS($userId);
 		return \OC_Helper::getStorageInfo('/');
+	}
+
+	protected function humanFileSize(int $bytes): array {
+		if ($bytes < 0) {
+			return ['?', ''];
+		}
+		if ($bytes < 1024) {
+			return [$bytes, 'B'];
+		}
+		$bytes = round($bytes / 1024, 0);
+		if ($bytes < 1024) {
+			return [$bytes, 'KB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'MB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'GB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'TB'];
+		}
+
+		$bytes = round($bytes / 1024, 1);
+		return [$bytes, 'PB'];
 	}
 }
