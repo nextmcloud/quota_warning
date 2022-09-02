@@ -36,6 +36,7 @@ use OCP\Mail\IMailer;
 use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 
+
 class CheckQuota {
 
 	/** @var IConfig */
@@ -79,6 +80,9 @@ class CheckQuota {
 	 * Checks the quota of a given user and issues the warning if necessary
 	 *
 	 * @param string $userId
+	 * 
+	 * comment all lines and add $usage = $this->getRelativeQuotaUsage($userId); and $this->sendEmail($userId, $usage);
+	 *
 	 */
 	public function check(string $userId): void {
 		if (!$this->userManager->userExists($userId)) {
@@ -169,6 +173,14 @@ class CheckQuota {
 	 */
 	protected function sendEmail(string $userId, float $percentage): void {
 		$user = $this->userManager->get($userId);
+		$storage = $this->getStorageInfo($userId);
+		$quota = $this->humanFileSize((int) $storage['quota']);
+		$usedSpace = $this->humanFileSize((int) $storage['used']);
+		if($quota[0]=="?"){
+			$quota[0]="Unlimited";
+			$quota[1]="";
+		}
+
 		if (!$user instanceof IUser) {
 			return;
 		}
@@ -180,9 +192,14 @@ class CheckQuota {
 
 		$lang = $this->config->getUserValue($userId, 'core', 'lang');
 		$l = $this->l10nFactory->get('quota_warning', $lang);
+		$subl = $this->l10nFactory->get('nmc_email_template', $lang);
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
-			'userId' => $user->getUID()
+			'userId' => $user->getUID(),
+			'displayName'=> $user->getDisplayNameOtherUser(),
+			'storage'=>$storage,
+			'quota1'=>$quota,
+			'usedSpace'=>$usedSpace,
 		]);
 
 		$emailTemplate->addHeader();
@@ -211,7 +228,7 @@ class CheckQuota {
 		try {
 			$message = $this->mailer->createMessage();
 			$message->setTo([$email => $user->getUID()]);
-			$message->setSubject($l->t('Nearing your storage quota'));
+			$message->setSubject($subl->t('Nearing your storage quota'));
 			$message->setPlainBody($emailTemplate->renderText());
 			$message->setHtmlBody($emailTemplate->renderHtml());
 			$this->mailer->send($message);
@@ -311,5 +328,33 @@ class CheckQuota {
 		\OC_Util::tearDownFS();
 		\OC_Util::setupFS($userId);
 		return \OC_Helper::getStorageInfo('/');
+	}
+
+	protected function humanFileSize(int $bytes): array {
+		if ($bytes < 0) {
+			return ['?', ''];
+		}
+		if ($bytes < 1024) {
+			return [$bytes, 'B'];
+		}
+		$bytes = round($bytes / 1024, 0);
+		if ($bytes < 1024) {
+			return [$bytes, 'KB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'MB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'GB'];
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return [$bytes, 'TB'];
+		}
+
+		$bytes = round($bytes / 1024, 1);
+		return [$bytes, 'PB'];
 	}
 }
