@@ -1,24 +1,10 @@
 <?php
+
+declare(strict_types=1);
+
 /**
- * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
- *
- * @author Joas Schilling <coding@schilljs.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\QuotaWarning\Tests\AppInfo;
@@ -32,33 +18,23 @@ use OCP\BackgroundJob\IJob;
 use OCP\BackgroundJob\TimedJob;
 use OCP\Migration\IRepairStep;
 use OCP\Notification\INotifier;
+use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Container\ContainerInterface;
 use Test\TestCase;
 
-/**
- * Class ApplicationTest
- *
- * @package OCA\QuotaWarning\Tests
- * @group DB
- */
 class ApplicationTest extends TestCase {
-	/** @var \OCA\QuotaWarning\AppInfo\Application */
-	protected $app;
+	protected Application $app;
+	protected ContainerInterface $container;
 
-	/** @var \OCP\AppFramework\IAppContainer */
-	protected $container;
-
+	#[Override]
 	protected function setUp(): void {
 		parent::setUp();
 		$this->app = new Application();
 		$this->container = $this->app->getContainer();
 	}
 
-	public function testContainerAppName() {
-		$this->app = new Application();
-		$this->assertEquals(Application::APP_ID, $this->container->getAppName());
-	}
-
-	public function dataContainerQuery() {
+	public static function dataContainerQuery(): array {
 		return [
 			[Application::class, App::class],
 			[Notifier::class, INotifier::class],
@@ -69,11 +45,10 @@ class ApplicationTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider dataContainerQuery
-	 * @param string $service
-	 * @param string $expected
+	 * @param class-string $expected
 	 */
-	public function testContainerQuery($service, $expected) {
-		$this->assertInstanceOf($expected, $this->container->query($service));
+	#[DataProvider(methodName: 'dataContainerQuery')]
+	public function testContainerQuery(string $service, string $expected): void {
+		$this->assertInstanceOf($expected, $this->container->get($service));
 	}
 }

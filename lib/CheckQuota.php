@@ -2,29 +2,15 @@
 
 declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\QuotaWarning;
 
 use OCA\QuotaWarning\AppInfo\Application;
 use OCA\QuotaWarning\Job\User;
+use OCP\AppFramework\Services\IAppConfig;
 use OCP\BackgroundJob\IJobList;
 use OCP\Files\FileInfo;
 use OCP\Files\NotFoundException;
@@ -37,42 +23,16 @@ use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 
 class CheckQuota {
-
-	/** @var IConfig */
-	protected $config;
-
-	/** @var LoggerInterface */
-	protected $logger;
-
-	/** @var IMailer */
-	protected $mailer;
-
-	/** @var IFactory */
-	protected $l10nFactory;
-
-	/** @var IUserManager */
-	protected $userManager;
-
-	/** @var IJobList */
-	protected $jobList;
-
-	/** @var IManager */
-	protected $notificationManager;
-
-	public function __construct(IConfig $config,
-		LoggerInterface $logger,
-		IMailer $mailer,
-		IFactory $l10nFactory,
-		IUserManager $userManager,
-		IJobList $jobList,
-		IManager $notificationManager) {
-		$this->config = $config;
-		$this->logger = $logger;
-		$this->mailer = $mailer;
-		$this->l10nFactory = $l10nFactory;
-		$this->userManager = $userManager;
-		$this->jobList = $jobList;
-		$this->notificationManager = $notificationManager;
+	public function __construct(
+		private readonly IAppConfig $appConfig,
+		private readonly IConfig $config,
+		private readonly LoggerInterface $logger,
+		private readonly IMailer $mailer,
+		private readonly IFactory $l10nFactory,
+		private readonly IUserManager $userManager,
+		private readonly IJobList $jobList,
+		private readonly IManager $notificationManager,
+	) {
 	}
 
 	/**
@@ -88,27 +48,27 @@ class CheckQuota {
 
 		$usage = $this->getRelativeQuotaUsage($userId);
 
-		if ($usage > $this->config->getAppValue('quota_warning', 'alert_percentage', '95')) {
+		if ($usage > $this->appConfig->getAppValueInt('alert_percentage', 95)) {
 			if ($this->shouldIssueWarning($userId, 'alert')) {
 				$this->issueWarning($userId, $usage);
-				if ($this->config->getAppValue('quota_warning', 'alert_email', 'no') === 'yes') {
+				if ($this->appConfig->getAppValueBool('alert_email')) {
 					$this->sendEmail($userId, $usage);
 				}
 			}
 			$this->updateLastWarning($userId, 'alert');
-		} elseif ($usage > $this->config->getAppValue('quota_warning', 'warning_percentage', '90')) {
+		} elseif ($usage > $this->appConfig->getAppValueInt('warning_percentage', 90)) {
 			if ($this->shouldIssueWarning($userId, 'warning')) {
 				$this->issueWarning($userId, $usage);
-				if ($this->config->getAppValue('quota_warning', 'warning_email', 'no') === 'yes') {
+				if ($this->appConfig->getAppValueBool('warning_email')) {
 					$this->sendEmail($userId, $usage);
 				}
 			}
 			$this->updateLastWarning($userId, 'warning');
 			$this->removeLastWarning($userId, 'alert');
-		} elseif ($usage > $this->config->getAppValue('quota_warning', 'info_percentage', '85')) {
+		} elseif ($usage > $this->appConfig->getAppValueInt('info_percentage', 85)) {
 			if ($this->shouldIssueWarning($userId, 'info')) {
 				$this->issueWarning($userId, $usage);
-				if ($this->config->getAppValue('quota_warning', 'info_email', 'no') === 'yes') {
+				if ($this->appConfig->getAppValueBool('info_email')) {
 					$this->sendEmail($userId, $usage);
 				}
 			}
@@ -127,7 +87,7 @@ class CheckQuota {
 	public function getRelativeQuotaUsage(string $userId): float {
 		try {
 			$storage = $this->getStorageInfo($userId);
-		} catch (NotFoundException $e) {
+		} catch (NotFoundException) {
 			return 0.0;
 		}
 
@@ -174,7 +134,7 @@ class CheckQuota {
 		}
 
 		$email = $user->getEMailAddress();
-		if (!$email) {
+		if ($email === null || $email === '') {
 			return;
 		}
 
@@ -188,7 +148,7 @@ class CheckQuota {
 		$emailTemplate->addHeader();
 		$emailTemplate->addHeading($l->t('Nearing your storage quota'), false);
 
-		$link = $this->config->getAppValue('quota_warning', 'plan_management_url');
+		$link = $this->appConfig->getAppValueString('plan_management_url');
 
 		$help = $l->t('You are using more than %d%% of your storage quota. Try to free up some space by deleting old files you don\'t need anymore.', [$percentage]);
 		if ($link !== '') {
@@ -239,7 +199,7 @@ class CheckQuota {
 	}
 
 	/**
-	 * The user should be warned, when we was not warned in the last 7 days
+	 * The user should be warned, when they were not warned in the last 7 days
 	 *
 	 * @param string $userId
 	 * @param string $level
@@ -251,7 +211,7 @@ class CheckQuota {
 			return true;
 		}
 
-		$days = (int) $this->config->getAppValue('quota_warning', 'repeat_warning', '7');
+		$days = $this->appConfig->getAppValueInt('repeat_warning', 7);
 
 		if ($days <= 0) {
 			return false;

@@ -1,5 +1,42 @@
+<!--
+  - SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 # Changelog
 All notable changes to this project will be documented in this file.
+
+## 1.24.0 – 2026-06-09
+### Changed
+- Nextcloud 34 compatibility
+
+## 1.23.0 – 2026-01-21
+### Changed
+- Nextcloud 33 compatibility
+
+## 1.22.0 – 2025-09-26
+### Changed
+- Nextcloud 32 compatibility
+- Require Nextcloud 31
+
+## 1.21.0 – 2025-02-15
+### Changed
+- Nextcloud 31 compatibility
+- Require Nextcloud 29
+
+## 1.20.0 – 2024-08-26
+### Changed
+- Nextcloud 30 compatibility
+- Require Nextcloud 28
+
+## 1.19.0 – 2024-03-29
+### Changed
+- Nextcloud 29 compatibility
+- Require Nextcloud 27
+
+## 1.18.0 – 2023-12-01
+### Changed
+- Nextcloud 28 compatibility
+- Require Nextcloud 26
 
 ## 1.17.0 – 2023-05-15
 ### Changed

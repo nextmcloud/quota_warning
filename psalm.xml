@@ -1,17 +1,27 @@
 <?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: 2021 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <psalm
-    errorLevel="5"
-    findUnusedBaselineEntry="false"
-    findUnusedCode="false"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns="https://getpsalm.org/schema/config"
-    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
-    errorBaseline="tests/psalm-baseline.xml"
+	errorBaseline="tests/psalm-baseline.xml"
+	errorLevel="2"
+	findUnusedCode="false"
+	resolveFromConfigFile="true"
+	phpVersion="8.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="https://getpsalm.org/schema/config"
+	xsi:schemaLocation="https://getpsalm.org/schema/config vendor-bin/psalm/vendor/vimeo/psalm/config.xsd"
 >
+    <stubs>
+       <file name="tests/stubs/testcase.stub" />
+    </stubs>
 	<projectFiles>
 		<directory name="lib" />
+        <directory name="tests" />
 		<ignoreFiles>
 			<directory name="vendor" />
+			<file name="tests/bootstrap.php" />
 		</ignoreFiles>
 	</projectFiles>
 	<extraFiles>
@@ -20,20 +30,20 @@
 			<directory name="vendor/phpunit/php-code-coverage" />
 		</ignoreFiles>
 	</extraFiles>
-	<issueHandlers>
-		<UndefinedClass>
-			<errorLevel type="suppress">
-				<referencedClass name="OC" />
-				<referencedClass name="Doctrine\DBAL\Types\Types" />
-			</errorLevel>
-		</UndefinedClass>
-		<UndefinedDocblockClass>
-			<errorLevel type="suppress">
-				<referencedClass name="Doctrine\DBAL\Schema\Schema" />
-				<referencedClass name="Doctrine\DBAL\Schema\SchemaException" />
-				<referencedClass name="Doctrine\DBAL\Driver\Statement" />
-				<referencedClass name="Doctrine\DBAL\Schema\Table" />
-			</errorLevel>
-		</UndefinedDocblockClass>
-	</issueHandlers>
+    <issueHandlers>
+        <ClassMustBeFinal errorLevel="info" />
+        <MissingConstructor>
+          <errorLevel type="info">
+            <directory name="tests" />
+          </errorLevel>
+        </MissingConstructor>
+        <DeprecatedMethod>
+          <errorLevel type="info">
+			<!-- Remove when we depend on NC > 33 -->
+            <referencedMethod name="OCP\IConfig::getUserValue" />
+            <referencedMethod name="OCP\IConfig::setUserValue" />
+            <referencedMethod name="OCP\IConfig::deleteUserValue" />
+          </errorLevel>
+        </DeprecatedMethod>
+    </issueHandlers>
 </psalm>

@@ -1,61 +1,49 @@
 <?php
+
+declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
- *
- * @author Joas Schilling <coding@schilljs.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\QuotaWarning\Tests\Migration;
 
 use OCA\QuotaWarning\Job\User;
 use OCA\QuotaWarning\Migration\Install;
+use OCP\AppFramework\Services\IAppConfig;
 use OCP\BackgroundJob\IJobList;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\Migration\IOutput;
+use Override;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class InstallTest extends \Test\TestCase {
-	/** @var Install */
-	protected $migration;
+	protected IUserManager&MockObject $userManager;
+	protected IJobList&MockObject $jobList;
+	protected IAppConfig&MockObject $appConfig;
+	protected Install $migration;
 
-	/** @var IUserManager|\PHPUnit_Framework_MockObject_MockObject */
-	protected $userManager;
-	/** @var IJobList|\PHPUnit_Framework_MockObject_MockObject */
-	protected $jobList;
-
+	#[Override]
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->userManager = $this->createMock(IUserManager::class);
 		$this->jobList = $this->createMock(IJobList::class);
+		$this->appConfig = $this->createMock(IAppConfig::class);
 
 		$this->migration = new Install(
 			$this->userManager,
-			$this->jobList
+			$this->jobList,
+			$this->appConfig,
 		);
 	}
 
-	public function testGetName() {
+	public function testGetName(): void {
 		$this->assertIsString($this->migration->getName());
 	}
 
-	protected function getUser($uid) {
+	protected function getUser(string $uid): MockObject {
 		$user = $this->createMock(IUser::class);
 		$user->expects($this->once())
 			->method('getUID')
@@ -63,8 +51,8 @@ class InstallTest extends \Test\TestCase {
 		return $user;
 	}
 
-	public function testRun() {
-		/** @var IOutput|\PHPUnit_Framework_MockObject_MockObject $output */
+	public function testRun(): void {
+		/** @var IOutput&MockObject $output */
 		$output = $this->createMock(IOutput::class);
 		$output->expects($this->once())
 			->method('startProgress');
@@ -73,19 +61,45 @@ class InstallTest extends \Test\TestCase {
 
 		$this->userManager->expects($this->once())
 			->method('callForSeenUsers')
-			->willReturnCallback(function ($closure) {
+			->willReturnCallback(function (callable $closure): void {
 				$closure($this->getUser('test1'));
 				$closure($this->getUser('test2'));
 				$closure($this->getUser('test3'));
 			});
 
+		$calls = [
+			[User::class, ['uid' => 'test1']],
+			[User::class, ['uid' => 'test2']],
+			[User::class, ['uid' => 'test3']],
+		];
 		$this->jobList->expects($this->exactly(3))
 			->method('add')
-			->withConsecutive(
-				[User::class, ['uid' => 'test1']],
-				[User::class, ['uid' => 'test2']],
-				[User::class, ['uid' => 'test3']]
-			);
+			->willReturnCallback(function () use (&$calls) {
+				$expected = array_shift($calls);
+				$this->assertEquals($expected, func_get_args());
+			});
+
+		$this->migration->run($output);
+	}
+
+	public function testRunSkipped(): void {
+		/** @var IOutput&MockObject $output */
+		$output = $this->createMock(IOutput::class);
+		$output->expects($this->never())
+			->method('startProgress');
+		$output->expects($this->never())
+			->method('finishProgress');
+
+		$this->appConfig->expects($this->once())
+			->method('getAppValueBool')
+			->with('initialised')
+			->willReturn(true);
+
+		$this->userManager->expects($this->never())
+			->method('callForSeenUsers');
+
+		$this->jobList->expects($this->never())
+			->method('add');
 
 		$this->migration->run($output);
 	}

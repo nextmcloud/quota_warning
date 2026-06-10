@@ -1,4 +1,8 @@
 <?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	  xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
 	<id>quota_warning</id>
@@ -7,7 +11,7 @@
 	<description>This app sends notifications to users when they reached 85, 90 and 95% of their quota (checked once a day).
 In addition an email can be sent to the users. The three percentages can be changed in the admin settings.
 It is also possible to have a link in the email and the notification for upsell options.</description>
-	<version>1.17.0</version>
+	<version>1.24.0</version>
 	<licence>agpl</licence>
 	<author>Joas Schilling</author>
 	<namespace>QuotaWarning</namespace>
@@ -23,7 +27,7 @@ It is also possible to have a link in the email and the notification for upsell 
 	<screenshot>https://raw.githubusercontent.com/nextcloud/quota_warning/main/docs/email.png</screenshot>
 	<screenshot>https://raw.githubusercontent.com/nextcloud/quota_warning/main/docs/admin-settings.png</screenshot>
 	<dependencies>
-		<nextcloud min-version="25" max-version="27" />
+		<nextcloud min-version="31" max-version="34" />
 	</dependencies>
 	<repair-steps>
 		<install>
@@ -33,7 +37,4 @@ It is also possible to have a link in the email and the notification for upsell 
 			<step>OCA\QuotaWarning\Migration\Uninstall</step>
 		</uninstall>
 	</repair-steps>
-	<settings>
-		<admin>OCA\QuotaWarning\Settings</admin>
-	</settings>
 </info>

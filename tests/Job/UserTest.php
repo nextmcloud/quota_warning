@@ -1,24 +1,10 @@
 <?php
+
+declare(strict_types=1);
+
 /**
- * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
- *
- * @author Joas Schilling <coding@schilljs.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\QuotaWarning\Tests\Job;
@@ -26,17 +12,15 @@ namespace OCA\QuotaWarning\Tests\Job;
 use OCA\QuotaWarning\CheckQuota;
 use OCA\QuotaWarning\Job\User;
 use OCP\AppFramework\Utility\ITimeFactory;
+use Override;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class UserTest extends \Test\TestCase {
-	/** @var User */
-	protected $job;
+	protected User $job;
+	protected ITimeFactory&MockObject $time;
+	protected CheckQuota&MockObject $checkQuota;
 
-	/** @var ITimeFactory|MockObject */
-	protected $time;
-	/** @var CheckQuota|MockObject */
-	protected $checkQuota;
-
+	#[Override]
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -49,11 +33,11 @@ class UserTest extends \Test\TestCase {
 		);
 	}
 
-	public function testInterval() {
+	public function testInterval(): void {
 		$this->assertSame(86400, self::invokePrivate($this->job, 'interval'));
 	}
 
-	public function testRun() {
+	public function testRun(): void {
 		$this->checkQuota->expects($this->once())
 			->method('check')
 			->with('test1');

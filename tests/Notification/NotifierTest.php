@@ -1,24 +1,9 @@
 <?php
+
+declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
- *
- * @author Joas Schilling <coding@schilljs.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\QuotaWarning\Tests\Notification;
@@ -26,37 +11,34 @@ namespace OCA\QuotaWarning\Tests\Notification;
 use OCA\QuotaWarning\AppInfo\Application;
 use OCA\QuotaWarning\CheckQuota;
 use OCA\QuotaWarning\Notification\Notifier;
-use OCP\IConfig;
+use OCP\AppFramework\Services\IAppConfig;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 use OCP\Notification\INotification;
+use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class NotifierTest extends \Test\TestCase {
-	/** @var Notifier */
-	protected $notifier;
+	protected Notifier $notifier;
+	protected IFactory&MockObject $factory;
+	protected CheckQuota&MockObject $checkQuota;
+	protected IAppConfig&MockObject $appConfig;
+	protected IURLGenerator&MockObject $urlGenerator;
+	protected IL10N&MockObject $l;
 
-	/** @var IFactory|\PHPUnit_Framework_MockObject_MockObject */
-	protected $factory;
-	/** @var CheckQuota|\PHPUnit_Framework_MockObject_MockObject */
-	protected $checkQuota;
-	/** @var IConfig|\PHPUnit_Framework_MockObject_MockObject */
-	protected $config;
-	/** @var IURLGenerator|\PHPUnit_Framework_MockObject_MockObject */
-	protected $urlGenerator;
-	/** @var IL10N|\PHPUnit_Framework_MockObject_MockObject */
-	protected $l;
-
+	#[Override]
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->checkQuota = $this->createMock(CheckQuota::class);
-		$this->config = $this->createMock(IConfig::class);
+		$this->appConfig = $this->createMock(IAppConfig::class);
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->l = $this->createMock(IL10N::class);
 		$this->l->expects($this->any())
 			->method('t')
-			->willReturnCallback(function ($string, $args) {
+			->willReturnCallback(function (string $string, array $args): string {
 				return vsprintf($string, $args);
 			});
 		$this->factory = $this->createMock(IFactory::class);
@@ -66,14 +48,13 @@ class NotifierTest extends \Test\TestCase {
 
 		$this->notifier = new Notifier(
 			$this->checkQuota,
-			$this->config,
+			$this->appConfig,
 			$this->factory,
 			$this->urlGenerator
 		);
 	}
 
-	public function testPrepareWrongApp() {
-		/** @var INotification|\PHPUnit_Framework_MockObject_MockObject $notification */
+	public function testPrepareWrongApp(): void {
 		$notification = $this->createMock(INotification::class);
 
 		$notification->expects($this->once())
@@ -87,8 +68,7 @@ class NotifierTest extends \Test\TestCase {
 		$this->notifier->prepare($notification, 'en');
 	}
 
-	public function testPrepareLessUsage() {
-		/** @var INotification|\PHPUnit_Framework_MockObject_MockObject $notification */
+	public function testPrepareLessUsage(): void {
 		$notification = $this->createMock(INotification::class);
 
 		$notification->expects($this->once())
@@ -100,10 +80,10 @@ class NotifierTest extends \Test\TestCase {
 		$notification->expects($this->never())
 			->method('getSubjectParameters');
 
-		$this->config->expects($this->once())
-			->method('getAppValue')
-			->with('quota_warning', 'info_percentage', '85')
-			->willReturnArgument(2);
+		$this->appConfig->expects($this->once())
+			->method('getAppValueInt')
+			->with('info_percentage', 85)
+			->willReturnArgument(1);
 
 		$this->checkQuota->expects($this->once())
 			->method('getRelativeQuotaUsage')
@@ -114,7 +94,7 @@ class NotifierTest extends \Test\TestCase {
 		$this->notifier->prepare($notification, 'en');
 	}
 
-	public function dataPrepare() {
+	public static function dataPrepare(): array {
 		return [
 			[85.1, ' 85% ', 'app-dark.svg'],
 			[94.9, ' 95% ', 'app-warning.svg'],
@@ -122,28 +102,21 @@ class NotifierTest extends \Test\TestCase {
 		];
 	}
 
-	/**
-	 * @dataProvider dataPrepare
-	 *
-	 * @param float $quota
-	 * @param string $stringContains
-	 * @param string $image
-	 */
-	public function testPrepare($quota, $stringContains, $image) {
+	#[DataProvider(methodName: 'dataPrepare')]
+	public function testPrepare(float $quota, string $stringContains, string $image): void {
 		$this->checkQuota->expects($this->once())
 			->method('getRelativeQuotaUsage')
 			->with('user')
 			->willReturn($quota);
 
-		$this->config->expects($this->any())
-			->method('getAppValue')
+		$this->appConfig->expects($this->any())
+			->method('getAppValueInt')
 			->willReturnMap([
-				['quota_warning', 'info_percentage', '85', '85'],
-				['quota_warning', 'warning_percentage', '90', '90'],
-				['quota_warning', 'alert_percentage', '95', '95'],
+				['info_percentage', 85, 85],
+				['warning_percentage', 90, 90],
+				['alert_percentage', 95, 95],
 			]);
 
-		/** @var INotification|\PHPUnit_Framework_MockObject_MockObject $notification */
 		$notification = $this->createMock(INotification::class);
 		$notification->expects($this->once())
 			->method('getApp')

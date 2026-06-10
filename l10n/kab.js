@@ -1,6 +1,6 @@
 OC.L10N.register(
     "quota_warning",
     {
-    "Saving…" : "Salveguardante..."
+    "Send an email" : "Azen imayl"
 },
 "nplurals=2; plural=(n != 1);");

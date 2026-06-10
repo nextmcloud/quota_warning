@@ -2,23 +2,8 @@
 
 declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\QuotaWarning\Job;
@@ -28,26 +13,19 @@ use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 
 class User extends TimedJob {
-
-	/** @var CheckQuota */
-	protected $checkQuota;
-
-	public function __construct(ITimeFactory $time,
-		CheckQuota $checkQuota) {
+	public function __construct(
+		ITimeFactory $time,
+		protected CheckQuota $checkQuota,
+	) {
 		parent::__construct($time);
-		$this->checkQuota = $checkQuota;
 		$this->setInterval(86400);
-
-		if (method_exists($this, 'setTimeSensitivity')) {
-			/**
-			 * This constant is always defined when setTimeSensitivity exists,
-			 * Psalm can not know this :(
-			 * @psalm-suppress UndefinedConstant
-			 */
-			$this->setTimeSensitivity(TimedJob::TIME_INSENSITIVE);
-		}
+		$this->setTimeSensitivity(self::TIME_INSENSITIVE);
 	}
 
+	/**
+	 * @param array{uid: string} $argument
+	 */
+	#[\Override]
 	protected function run($argument): void {
 		$this->checkQuota->check($argument['uid']);
 	}
