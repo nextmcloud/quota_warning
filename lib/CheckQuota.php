@@ -132,41 +132,46 @@ class CheckQuota {
 		if (!$user instanceof IUser) {
 			return;
 		}
-
+	
 		if (!$user->isEnabled()) {
-			// Don't notify disabled users
 			return;
 		}
-
+	
 		$email = $user->getEMailAddress();
 		if ($email === null || $email === '') {
 			return;
 		}
-
+	
 		$lang = $this->config->getUserValue($userId, 'core', 'lang');
 		$l = $this->l10nFactory->get('quota_warning', $lang);
-		$storageInfo = $this->getStorageInfo($userId);
-
+	
+		$roundedPercentage = min(100, (int)round($percentage));
+		$isFull = $roundedPercentage >= 100;
+	
+		$subject = $isFull
+			? $l->t('Your storage quota is full')
+			: $l->t('Nearing your storage quota');
+	
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
 			'userId' => $user->getUID(),
-			'displayName' => $user->getDisplayName(),
-			'used' => (int)$storageInfo['used'],
-			'quotaBytes' => (int)$storageInfo['quota'],
 		]);
-
+	
 		$emailTemplate->addHeader();
-		$emailTemplate->addHeading($l->t('Nearing your storage quota'), false);
-
+		$emailTemplate->addHeading($subject, false);
+	
 		$link = $this->appConfig->getAppValueString('plan_management_url');
-
-		$help = $l->t('You are using more than %d%% of your storage quota. Try to free up some space by deleting old files you don\'t need anymore.', [$percentage]);
+	
+		$help = $isFull
+			? $l->t('Your storage is full. You cannot upload any more files. Free up storage space by deleting files you no longer need or by emptying your recycle bin.')
+			: $l->t('You are using more than %d%% of your storage quota. Try to free up some space by deleting old files you don\'t need anymore.', [$roundedPercentage]);
+	
 		if ($link !== '') {
 			$emailTemplate->addBodyText(
 				htmlspecialchars($help . ' ' . $l->t('Or click the following button for options to change your data plan.')),
 				$help . ' ' . $l->t('Or click the following link for options to change your data plan.')
 			);
-
+	
 			$emailTemplate->addBodyButton(
 				htmlspecialchars($l->t('Data plan options')),
 				$link,
@@ -175,13 +180,13 @@ class CheckQuota {
 		} else {
 			$emailTemplate->addBodyText($help);
 		}
-
+	
 		$emailTemplate->addFooter();
-
+	
 		try {
 			$message = $this->mailer->createMessage();
 			$message->setTo([$email => $user->getUID()]);
-			$message->setSubject($l->t('Nearing your storage quota'));
+			$message->setSubject($subject);
 			$message->setPlainBody($emailTemplate->renderText());
 			$message->setHtmlBody($emailTemplate->renderHtml());
 			$this->mailer->send($message);
