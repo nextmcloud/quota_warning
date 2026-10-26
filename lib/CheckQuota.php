@@ -155,6 +155,9 @@ class CheckQuota {
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
 			'userId' => $user->getUID(),
+			'displayName' => $user->getDisplayName(),
+			'used' => (int)$storageInfo['used'],
+			'quotaBytes' => (int)$storageInfo['quota'],
 		]);
 	
 		$emailTemplate->addHeader();
@@ -169,13 +172,13 @@ class CheckQuota {
 		if ($link !== '') {
 			$emailTemplate->addBodyText(
 				htmlspecialchars($help . ' ' . $l->t('Or click the following button for options to change your data plan.')),
-				$help . ' ' . $l->t('Or click the following link for options to change your data plan.')
+				$help . ' ' . $l->t('Or click the following link for options to change your data plan.'),
 			);
 	
 			$emailTemplate->addBodyButton(
 				htmlspecialchars($l->t('Data plan options')),
 				$link,
-				false
+				false,
 			);
 		} else {
 			$emailTemplate->addBodyText($help);
