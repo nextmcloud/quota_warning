@@ -145,9 +145,14 @@ class CheckQuota {
 
 		$lang = $this->config->getUserValue($userId, 'core', 'lang');
 		$l = $this->l10nFactory->get('quota_warning', $lang);
+		$storageInfo = $this->getStorageInfo($userId);
+
 		$emailTemplate = $this->mailer->createEMailTemplate('quota_warning.Notification', [
 			'quota' => $percentage,
-			'userId' => $user->getUID()
+			'userId' => $user->getUID(),
+			'displayName' => $user->getDisplayName(),
+			'used' => (int)$storageInfo['used'],
+			'quotaBytes' => (int)$storageInfo['quota'],
 		]);
 
 		$emailTemplate->addHeader();
